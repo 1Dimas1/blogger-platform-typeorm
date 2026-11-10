@@ -5,6 +5,11 @@ import { Post } from '../modules/blogger-platform/posts/domain/post.entity';
 import { Comment } from '../modules/blogger-platform/comments/domain/comment.entity';
 import { PostLike } from '../modules/blogger-platform/likes/domain/post-like.entity';
 import { CommentLike } from '../modules/blogger-platform/likes/domain/comment-like.entity';
+import { Question } from '../modules/quiz-game/questions/domain/question.entity';
+import { Game } from '../modules/quiz-game/game/domain/game.entity';
+import { GamePlayer } from '../modules/quiz-game/game/domain/game-player.entity';
+import { GameQuestion } from '../modules/quiz-game/game/domain/game-question.entity';
+import { Answer } from '../modules/quiz-game/game/domain/answer.entity';
 
 // every TypeORM entity of the app; used by the app DataSource and the migrations CLI
 export const entities = [
@@ -15,4 +20,9 @@ export const entities = [
   Comment,
   PostLike,
   CommentLike,
+  Question,
+  Game,
+  GamePlayer,
+  GameQuestion,
+  Answer,
 ];

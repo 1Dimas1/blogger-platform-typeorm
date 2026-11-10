@@ -3,6 +3,7 @@ export const Constants = {
     SA: {
       USERS: '/sa/users',
       BLOGS: '/sa/blogs',
+      QUIZ_QUESTIONS: '/sa/quiz/questions',
     },
     BLOGS: '/blogs',
     POSTS: '/posts',
@@ -12,6 +13,7 @@ export const Constants = {
     DEVICES: '/devices',
     LIKES: '/likes',
     TESTING: '/testing',
+    PAIR_GAME_QUIZ: '/pair-game-quiz',
   },
   GLOBAL_PREFIX: 'api',
 };

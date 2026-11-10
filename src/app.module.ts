@@ -7,6 +7,7 @@ import { buildTypeOrmOptions } from './db/typeorm.options';
 import { UserAccountsModule } from './modules/user-accounts/user-accounts.module';
 import { CoreModule } from './core/core.module';
 import { BloggerPlatformModule } from './modules/blogger-platform/blogger-platform.module';
+import { QuizGameModule } from './modules/quiz-game/quiz-game.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { TestingModule } from './modules/testing/testing.module';
@@ -41,6 +42,7 @@ import { CoreConfig } from './core/core.config';
     UserAccountsModule,
     CoreModule,
     BloggerPlatformModule,
+    QuizGameModule,
     TestingModule,
     NotificationsModule,
     configModule,
