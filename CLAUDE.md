@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A NestJS-based blogging platform implementing Clean Architecture, Domain-Driven Design (DDD), and CQRS patterns. The application uses MongoDB with Mongoose for data persistence and includes authentication, blogging features, and an event-driven notification system.
+A NestJS-based blogging platform implementing Clean Architecture, Domain-Driven Design (DDD), and CQRS patterns. The application uses PostgreSQL through TypeORM (v1, `@nestjs/typeorm` 11) and includes authentication, blogging features, and an event-driven notification system.
+
+> Mongoose-specific notes further below are historical (the project went Mongo -> raw SQL -> TypeORM). Current data layer:
+> - Domain classes in `domain/*.entity.ts` are TypeORM entities (decorators) that keep their business methods (`createInstance`, `makeDeleted`, ...). Soft delete = `@DeleteDateColumn`.
+> - Write repositories wrap `Repository<Entity>`; query repositories use `QueryBuilder` and map to view DTOs (counters such as likes are computed in SQL, not stored).
+> - Tables/columns are snake_case via `src/db/snake-naming.strategy.ts`. Every entity must be listed in `src/db/entities.ts`, every migration in `src/db/migrations.ts` (no globs: the Vercel bundle can't resolve them).
+> - Schema changes: `NODE_ENV=development yarn migration:generate src/db/migrations/<Name>`, register the class, `yarn migration:run`. On Vercel pending migrations run on startup (`DB_MIGRATIONS_RUN=true`).
+> - Env files in `src/env/` are not committed; see `src/env/.env.example`.
 
 ## Development Commands
 

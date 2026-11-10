@@ -1,15 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { Like, LikeDocument } from '../../domain/like.entity';
-import { CreateLikeDomainDto } from '../../domain/dto/create-like.domain.dto';
+import { PostLike, PostLikeDocument } from '../../domain/post-like.entity';
+import {
+  CommentLike,
+  CommentLikeDocument,
+} from '../../domain/comment-like.entity';
+import {
+  CreateCommentLikeDomainDto,
+  CreatePostLikeDomainDto,
+} from '../../domain/dto/create-like.domain.dto';
 
 @Injectable()
 export class LikesFactory {
-  create(dto: CreateLikeDomainDto): LikeDocument {
-    return Like.createInstance({
-      userId: dto.userId,
-      parentId: dto.parentId,
-      parentType: dto.parentType,
-      status: dto.status,
-    });
+  createPostLike(dto: CreatePostLikeDomainDto): PostLikeDocument {
+    return PostLike.createInstance(dto);
+  }
+
+  createCommentLike(dto: CreateCommentLikeDomainDto): CommentLikeDocument {
+    return CommentLike.createInstance(dto);
   }
 }

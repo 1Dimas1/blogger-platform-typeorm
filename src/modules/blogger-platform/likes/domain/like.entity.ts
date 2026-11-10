@@ -1,5 +1,12 @@
-import { v4 as uuidv4 } from 'uuid';
-import { CreateLikeDomainDto } from './dto/create-like.domain.dto';
+import {
+  Column,
+  CreateDateColumn,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { User } from '../../../user-accounts/domain/user.entity';
 
 export enum LikeStatus {
   None = 'None',
@@ -7,34 +14,28 @@ export enum LikeStatus {
   Dislike = 'Dislike',
 }
 
-export class Like {
+// columns shared by post_likes and comment_likes; not a table itself
+export abstract class Like {
+  @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ManyToOne(() => User, { nullable: false })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
+
+  @Column({ type: 'uuid' })
   userId: string;
-  parentId: string;
-  parentType: 'comment' | 'post';
+
+  @Column({ type: 'enum', enum: LikeStatus, enumName: 'like_status' })
   status: LikeStatus;
+
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
-
-  isNew: boolean;
-
-  static createInstance(dto: CreateLikeDomainDto): Like {
-    const like = new Like();
-    like.id = uuidv4();
-    like.userId = dto.userId;
-    like.parentId = dto.parentId;
-    like.parentType = dto.parentType;
-    like.status = dto.status;
-    like.createdAt = new Date();
-    like.updatedAt = new Date();
-    like.isNew = true;
-
-    return like;
-  }
 
   updateStatus(status: LikeStatus) {
     this.status = status;
   }
 }
-
-export type LikeDocument = Like;

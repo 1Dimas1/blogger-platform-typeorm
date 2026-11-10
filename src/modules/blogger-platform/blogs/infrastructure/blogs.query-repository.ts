@@ -1,75 +1,56 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { GetBlogsQueryParams } from '../api/input-dto/get-blogs-query-params.input-dto';
 import { BlogViewDto } from '../api/view-dto/blogs.view-dto';
 import { PaginatedViewDto } from '../../../../core/dto/base.paginated.view-dto';
 import { DomainException } from '../../../../core/exceptions/domain-exceptions';
 import { DomainExceptionCode } from '../../../../core/exceptions/domain-exception-codes';
-import { DbService } from '../../../../db/db.service';
+import { Blog } from '../domain/blog.entity';
+
+const sortableFields: (keyof Blog)[] = [
+  'createdAt',
+  'name',
+  'description',
+  'websiteUrl',
+];
 
 @Injectable()
 export class BlogsQueryRepository {
-  constructor(private dbService: DbService) {}
-
-  private getSortColumn(sortBy: string): string {
-    const sortColumnMap: Record<string, string> = {
-      createdAt: 'created_at',
-      name: 'name',
-      description: 'description',
-      websiteUrl: 'website_url',
-    };
-    return sortColumnMap[sortBy] || 'created_at';
-  }
+  constructor(@InjectRepository(Blog) private blogsRepo: Repository<Blog>) {}
 
   async getByIdOrNotFoundFail(id: string): Promise<BlogViewDto> {
-    const result = await this.dbService.query(
-      `SELECT * FROM blogs WHERE id = $1 AND deleted_at IS NULL`,
-      [id],
-    );
+    const blog = await this.blogsRepo.findOneBy({ id });
 
-    if (result.rows.length === 0) {
+    if (!blog) {
       throw new DomainException({
         code: DomainExceptionCode.NotFound,
         message: 'blog not found',
       });
     }
 
-    return BlogViewDto.mapToView(result.rows[0]);
+    return BlogViewDto.mapToView(blog);
   }
 
   async getAll(
     query: GetBlogsQueryParams,
   ): Promise<PaginatedViewDto<BlogViewDto[]>> {
-    const conditions: string[] = ['deleted_at IS NULL'];
-    const params: any[] = [];
-    let paramIndex = 1;
+    const where: FindOptionsWhere<Blog> = query.searchNameTerm
+      ? { name: ILike(`%${query.searchNameTerm}%`) }
+      : {};
+    const sortBy = sortableFields.includes(query.sortBy as keyof Blog)
+      ? query.sortBy
+      : 'createdAt';
 
-    if (query.searchNameTerm) {
-      conditions.push(`name ILIKE $${paramIndex}`);
-      params.push(`%${query.searchNameTerm}%`);
-      paramIndex++;
-    }
-
-    const whereClause = conditions.join(' AND ');
-    const sortColumn = this.getSortColumn(query.sortBy);
-    const sortDir = query.sortDirection.toUpperCase();
-
-    const countResult = await this.dbService.query(
-      `SELECT COUNT(*) FROM blogs WHERE ${whereClause}`,
-      params,
-    );
-    const totalCount = parseInt(countResult.rows[0].count);
-
-    const dataResult = await this.dbService.query(
-      `SELECT * FROM blogs WHERE ${whereClause}
-       ORDER BY ${sortColumn} ${sortDir}
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      [...params, query.pageSize, query.calculateSkip()],
-    );
-
-    const items: BlogViewDto[] = dataResult.rows.map(BlogViewDto.mapToView);
+    const [blogs, totalCount] = await this.blogsRepo.findAndCount({
+      where,
+      order: { [sortBy]: query.sortDirection.toUpperCase() },
+      skip: query.calculateSkip(),
+      take: query.pageSize,
+    });
 
     return PaginatedViewDto.mapToView({
-      items,
+      items: blogs.map(BlogViewDto.mapToView),
       totalCount,
       page: query.pageNumber,
       size: query.pageSize,

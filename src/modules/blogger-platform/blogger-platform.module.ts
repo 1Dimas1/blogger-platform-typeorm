@@ -1,4 +1,10 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Blog } from './blogs/domain/blog.entity';
+import { Post } from './posts/domain/post.entity';
+import { Comment } from './comments/domain/comment.entity';
+import { PostLike } from './likes/domain/post-like.entity';
+import { CommentLike } from './likes/domain/comment-like.entity';
 import { BlogsController } from './blogs/api/blogs.controller';
 import { SaBlogsController } from './blogs/api/sa-blogs.controller';
 import { PostsController } from './posts/api/posts.controller';
@@ -21,7 +27,6 @@ import { UpdatePostUseCase } from './posts/application/usecases/update-post.usec
 import { DeletePostUseCase } from './posts/application/usecases/delete-post.usecase';
 import { UpdatePostByBlogIdUseCase } from './posts/application/usecases/update-post-by-blog-id.usecase';
 import { DeletePostByBlogIdUseCase } from './posts/application/usecases/delete-post-by-blog-id.usecase';
-import { UpdatePostLikesInfoUseCase } from './posts/application/usecases/update-post-likes-info.usecase';
 import { GetPostByIdQueryHandler } from './posts/application/queries/get-post-by-id.query';
 import { GetPostsByBlogIdQueryHandler } from './posts/application/queries/get-posts-by-blog-id.query';
 import { PostsFactory } from './posts/application/factories/posts.factory';
@@ -48,7 +53,6 @@ const commandHandlers = [
   DeletePostUseCase,
   UpdatePostByBlogIdUseCase,
   DeletePostByBlogIdUseCase,
-  UpdatePostLikesInfoUseCase,
   CreateCommentUseCase,
   UpdateCommentUseCase,
   DeleteCommentUseCase,
@@ -67,7 +71,10 @@ const queryHandlers = [
 ];
 
 @Module({
-  imports: [UserAccountsModule],
+  imports: [
+    TypeOrmModule.forFeature([Blog, Post, Comment, PostLike, CommentLike]),
+    UserAccountsModule,
+  ],
   controllers: [
     BlogsController,
     SaBlogsController,

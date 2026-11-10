@@ -3,7 +3,7 @@ import { LikeDto } from '../../dto/like.dto';
 import { LikesRepository } from '../../infrastructure/likes.repository';
 import { CommentsRepository } from '../../../comments/infrastructure/comments.repository';
 import { LikesFactory } from '../factories/likes.factory';
-import { LikeDocument } from '../../domain/like.entity';
+import { CommentLikeDocument } from '../../domain/comment-like.entity';
 
 export class UpdateCommentLikeStatusCommand {
   constructor(
@@ -30,28 +30,23 @@ export class UpdateCommentLikeStatusUseCase
   }: UpdateCommentLikeStatusCommand): Promise<void> {
     await this.commentsRepository.findOrNotFoundFail(commentId);
 
-    const existingLike: LikeDocument | null =
-      await this.likesRepository.findByUserAndParent(
-        userId,
-        commentId,
-        'comment',
-      );
+    const existingLike: CommentLikeDocument | null =
+      await this.likesRepository.findCommentLike(userId, commentId);
 
     if (existingLike) {
       if (existingLike.status === dto.likeStatus) {
         return;
       }
       existingLike.updateStatus(dto.likeStatus);
-      await this.likesRepository.save(existingLike);
+      await this.likesRepository.saveCommentLike(existingLike);
     } else {
-      const like: LikeDocument = this.likesFactory.create({
+      const like: CommentLikeDocument = this.likesFactory.createCommentLike({
         userId,
-        parentId: commentId,
-        parentType: 'comment',
+        commentId,
         status: dto.likeStatus,
       });
 
-      await this.likesRepository.save(like);
+      await this.likesRepository.saveCommentLike(like);
     }
   }
 }

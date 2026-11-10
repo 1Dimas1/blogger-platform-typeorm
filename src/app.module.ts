@@ -2,7 +2,6 @@ import { configModule } from './config-dynamic-module';
 import { DynamicModule, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { DbModule } from './db/db.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { buildTypeOrmOptions } from './db/typeorm.options';
 import { UserAccountsModule } from './modules/user-accounts/user-accounts.module';
@@ -28,24 +27,6 @@ import { CoreConfig } from './core/core.config';
     TypeOrmModule.forRootAsync({
       imports: [CoreModule],
       useFactory: (coreConfig: CoreConfig) => buildTypeOrmOptions(coreConfig),
-      inject: [CoreConfig],
-    }),
-    // raw SQL connection, kept until every module is migrated to TypeORM
-    DbModule.forRootAsync({
-      imports: [CoreModule],
-      useFactory: (coreConfig: CoreConfig) =>
-        coreConfig.databaseUrl
-          ? {
-              connectionString: coreConfig.databaseUrl,
-              ssl: { rejectUnauthorized: false },
-            }
-          : {
-              user: coreConfig.dbUser,
-              host: coreConfig.dbHost,
-              database: coreConfig.dbName,
-              password: coreConfig.dbPassword,
-              port: coreConfig.dbPort,
-            },
       inject: [CoreConfig],
     }),
     ThrottlerModule.forRootAsync({

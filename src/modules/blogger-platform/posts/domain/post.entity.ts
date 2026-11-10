@@ -1,36 +1,62 @@
-import { v4 as uuidv4 } from 'uuid';
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { UpdatePostDto } from '../dto/update-post.dto';
 import { CreatePostDomainDto } from './dto/create-post.domain.dto';
+import { Blog } from '../../blogs/domain/blog.entity';
+import { Comment } from '../../comments/domain/comment.entity';
 
+// blogName comes from the blogs join, like counters from post_likes (see PostsQueryRepository)
+@Entity('posts')
 export class Post {
+  @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'varchar', length: 30 })
   title: string;
+
+  @Column({ type: 'varchar', length: 100 })
   shortDescription: string;
+
+  @Column({ type: 'varchar', length: 1000 })
   content: string;
+
+  @ManyToOne(() => Blog, (blog) => blog.posts, { nullable: false })
+  @JoinColumn({ name: 'blog_id' })
+  blog: Blog;
+
+  @Index()
+  @Column({ type: 'uuid' })
   blogId: string;
-  blogName: string;
-  likesCount: number;
-  dislikesCount: number;
+
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date | null;
 
-  isNew: boolean;
+  @OneToMany(() => Comment, (comment) => comment.post)
+  comments: Comment[];
 
   static createInstance(dto: CreatePostDomainDto): Post {
     const post = new Post();
-    post.id = uuidv4();
     post.title = dto.title;
     post.shortDescription = dto.shortDescription;
     post.content = dto.content;
     post.blogId = dto.blogId;
-    post.blogName = dto.blogName;
-    post.likesCount = 0;
-    post.dislikesCount = 0;
-    post.createdAt = new Date();
-    post.updatedAt = new Date();
     post.deletedAt = null;
-    post.isNew = true;
 
     return post;
   }
@@ -49,11 +75,6 @@ export class Post {
     if (dto.blogId) {
       this.blogId = dto.blogId;
     }
-  }
-
-  updateLikesInfo(likesCount: number, dislikesCount: number) {
-    this.likesCount = likesCount;
-    this.dislikesCount = dislikesCount;
   }
 }
 

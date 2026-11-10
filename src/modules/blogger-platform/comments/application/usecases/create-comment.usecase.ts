@@ -5,7 +5,6 @@ import { CreateCommentDto } from '../../dto/create-comment.dto';
 import { CommentDocument } from '../../domain/comment.entity';
 import { PostsRepository } from '../../../posts/infrastructure/posts.repository';
 import { UsersExternalQueryRepository } from '../../../../user-accounts/infrastructure/external-query/users.external-query-repository';
-import { UserExternalDto } from '../../../../user-accounts/infrastructure/external-query/external-dto/users.external-dto';
 
 export class CreateCommentCommand {
   constructor(
@@ -33,14 +32,11 @@ export class CreateCommentUseCase
   }: CreateCommentCommand): Promise<string> {
     await this.postsRepository.findOrNotFoundFail(postId);
 
-    const user: UserExternalDto =
-      await this.usersExternalQueryRepository.getByIdOrNotFoundFail(userId);
-    const userLogin: string = user.login;
+    await this.usersExternalQueryRepository.getByIdOrNotFoundFail(userId);
 
     const comment: CommentDocument = await this.commentsFactory.create({
       content: dto.content,
       userId,
-      userLogin,
       postId,
     });
 

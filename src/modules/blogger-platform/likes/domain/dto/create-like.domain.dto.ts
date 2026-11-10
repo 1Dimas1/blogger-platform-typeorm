@@ -1,8 +1,13 @@
 import { LikeStatus } from '../like.entity';
 
-export class CreateLikeDomainDto {
+export class CreatePostLikeDomainDto {
   userId: string;
-  parentId: string;
-  parentType: 'comment' | 'post';
+  postId: string;
+  status: LikeStatus;
+}
+
+export class CreateCommentLikeDomainDto {
+  userId: string;
+  commentId: string;
   status: LikeStatus;
 }

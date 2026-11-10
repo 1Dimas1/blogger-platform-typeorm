@@ -226,7 +226,7 @@ export const postsFactory = {
    * const updateData = postsFactory.createUpdatePostData(blogId, { title: 'New Title' });
    */
   createUpdatePostData(
-    blogId: string,
+    _blogId: string,
     overrides: Partial<UpdatePostInputDto> = {},
   ): UpdatePostInputDto {
     const timestamp = Date.now();
@@ -237,7 +237,6 @@ export const postsFactory = {
       shortDescription:
         overrides.shortDescription ?? `Updated description ${timestamp}`,
       content: overrides.content ?? `Updated content ${timestamp}`,
-      blogId: overrides.blogId ?? blogId,
     };
   },
 

@@ -1,87 +1,45 @@
 import { Injectable } from '@nestjs/common';
-import {
-  CommentViewDto,
-  LikesInfoViewDto,
-} from '../api/view-dto/comment.view-dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { GetCommentsQueryParams } from '../api/input-dto/get-comments-query-params.input-dto';
-import { LikeStatus } from '../../likes/domain/like.entity';
 import { PaginatedViewDto } from '../../../../core/dto/base.paginated.view-dto';
 import { DomainException } from '../../../../core/exceptions/domain-exceptions';
 import { DomainExceptionCode } from '../../../../core/exceptions/domain-exception-codes';
-import { DbService } from '../../../../db/db.service';
+import { LikeStatus } from '../../likes/domain/like.entity';
+import { CommentLike } from '../../likes/domain/comment-like.entity';
+import {
+  CommentRawRow,
+  CommentViewDto,
+} from '../api/view-dto/comment.view-dto';
+import { Comment } from '../domain/comment.entity';
+
+const sortColumnMap: Record<string, string> = {
+  createdAt: 'c.createdAt',
+  content: 'c.content',
+};
 
 @Injectable()
 export class CommentsQueryRepository {
-  constructor(private dbService: DbService) {}
-
-  private getSortColumn(sortBy: string): string {
-    const sortColumnMap: Record<string, string> = {
-      createdAt: 'c.created_at',
-      content: 'c.content',
-    };
-    return sortColumnMap[sortBy] || 'c.created_at';
-  }
-
-  private buildLikesSelect(
-    userId: string | null | undefined,
-    paramIndex: number,
-  ): {
-    selectClause: string;
-    params: any[];
-    nextParamIndex: number;
-  } {
-    const likesCountSelect = `COALESCE((SELECT COUNT(*) FROM likes l WHERE l.parent_id = c.id AND l.parent_type = 'comment' AND l.status = 'Like'), 0)::int as likes_count`;
-    const dislikesCountSelect = `COALESCE((SELECT COUNT(*) FROM likes l WHERE l.parent_id = c.id AND l.parent_type = 'comment' AND l.status = 'Dislike'), 0)::int as dislikes_count`;
-
-    let myStatusSelect: string;
-    const params: any[] = [];
-
-    if (userId) {
-      myStatusSelect = `COALESCE(
-        (SELECT l.status FROM likes l WHERE l.parent_id = c.id AND l.parent_type = 'comment' AND l.user_id = $${paramIndex}),
-        '${LikeStatus.None}'
-      ) as my_status`;
-      params.push(userId);
-      paramIndex++;
-    } else {
-      myStatusSelect = `'${LikeStatus.None}' as my_status`;
-    }
-
-    return {
-      selectClause: `${likesCountSelect}, ${dislikesCountSelect}, ${myStatusSelect}`,
-      params,
-      nextParamIndex: paramIndex,
-    };
-  }
+  constructor(
+    @InjectRepository(Comment) private commentsRepo: Repository<Comment>,
+  ) {}
 
   async getByIdOrNotFoundFail(
     id: string,
     userId?: string | null,
   ): Promise<CommentViewDto> {
-    const likes = this.buildLikesSelect(userId, 2);
+    const row = await this.buildCommentsQuery(userId)
+      .where('c.id = :id', { id })
+      .getRawOne<CommentRawRow>();
 
-    const result = await this.dbService.query(
-      `SELECT c.*, ${likes.selectClause}
-       FROM comments c
-       WHERE c.id = $1`,
-      [id, ...likes.params],
-    );
-
-    if (result.rows.length === 0) {
+    if (!row) {
       throw new DomainException({
         code: DomainExceptionCode.NotFound,
         message: 'comment not found',
       });
     }
 
-    const row = result.rows[0];
-    const likesInfo: LikesInfoViewDto = {
-      likesCount: row.likes_count,
-      dislikesCount: row.dislikes_count,
-      myStatus: row.my_status as LikeStatus,
-    };
-
-    return CommentViewDto.mapToView(row, likesInfo);
+    return CommentViewDto.mapToView(row);
   }
 
   async getAllByPostId(
@@ -89,42 +47,82 @@ export class CommentsQueryRepository {
     query: GetCommentsQueryParams,
     userId?: string | null,
   ): Promise<PaginatedViewDto<CommentViewDto[]>> {
-    const sortColumn = this.getSortColumn(query.sortBy);
-    const sortDir = query.sortDirection.toUpperCase();
+    const sortColumn = sortColumnMap[query.sortBy] ?? sortColumnMap.createdAt;
+    const sortDirection =
+      query.sortDirection.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-    const countResult = await this.dbService.query(
-      `SELECT COUNT(*) FROM comments c WHERE c.post_id = $1`,
-      [postId],
-    );
-    const totalCount = parseInt(countResult.rows[0].count);
-
-    let paramIndex = 2;
-    const likes = this.buildLikesSelect(userId, paramIndex);
-    paramIndex = likes.nextParamIndex;
-
-    const dataResult = await this.dbService.query(
-      `SELECT c.*, ${likes.selectClause}
-       FROM comments c
-       WHERE c.post_id = $1
-       ORDER BY ${sortColumn} ${sortDir}
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      [postId, ...likes.params, query.pageSize, query.calculateSkip()],
-    );
-
-    const items: CommentViewDto[] = dataResult.rows.map((row: any) => {
-      const likesInfo: LikesInfoViewDto = {
-        likesCount: row.likes_count,
-        dislikesCount: row.dislikes_count,
-        myStatus: row.my_status as LikeStatus,
-      };
-      return CommentViewDto.mapToView(row, likesInfo);
+    const qb = this.buildCommentsQuery(userId).where('c.postId = :postId', {
+      postId,
     });
 
+    const [rows, totalCount] = await Promise.all([
+      qb
+        .clone()
+        .orderBy(sortColumn, sortDirection)
+        .offset(query.calculateSkip())
+        .limit(query.pageSize)
+        .getRawMany<CommentRawRow>(),
+      qb.getCount(),
+    ]);
+
     return PaginatedViewDto.mapToView({
-      items,
+      items: rows.map(CommentViewDto.mapToView),
       totalCount,
       page: query.pageNumber,
       size: query.pageSize,
     });
+  }
+
+  /**
+   * Comments with commentator login, like/dislike counters and the user's own status.
+   * withDeleted() keeps the login of a soft-deleted commentator.
+   */
+  private buildCommentsQuery(
+    userId?: string | null,
+  ): SelectQueryBuilder<Comment> {
+    const qb = this.commentsRepo
+      .createQueryBuilder('c')
+      .withDeleted()
+      .innerJoin('c.commentator', 'u')
+      .select('c.id', 'id')
+      .addSelect('c.content', 'content')
+      .addSelect('c.commentatorUserId', 'commentatorUserId')
+      .addSelect('u.login', 'commentatorUserLogin')
+      .addSelect('c.createdAt', 'createdAt')
+      .addSelect(
+        (sq) =>
+          sq
+            .select('COUNT(*)')
+            .from(CommentLike, 'cl')
+            .where('cl.commentId = c.id')
+            .andWhere('cl.status = :like'),
+        'likesCount',
+      )
+      .addSelect(
+        (sq) =>
+          sq
+            .select('COUNT(*)')
+            .from(CommentLike, 'cl')
+            .where('cl.commentId = c.id')
+            .andWhere('cl.status = :dislike'),
+        'dislikesCount',
+      )
+      .setParameters({ like: LikeStatus.Like, dislike: LikeStatus.Dislike });
+
+    if (userId) {
+      qb.addSelect(
+        (sq) =>
+          sq
+            .select('cl.status')
+            .from(CommentLike, 'cl')
+            .where('cl.commentId = c.id')
+            .andWhere('cl.userId = :userId'),
+        'myStatus',
+      ).setParameter('userId', userId);
+    } else {
+      qb.addSelect('NULL', 'myStatus');
+    }
+
+    return qb;
   }
 }

@@ -1,6 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { LikeStatus } from '../../../likes/domain/like.entity';
 
+// one row of CommentsQueryRepository's select (comment + commentator login + like counters)
+export type CommentRawRow = {
+  id: string;
+  content: string;
+  commentatorUserId: string;
+  commentatorUserLogin: string;
+  createdAt: Date;
+  likesCount: string | number;
+  dislikesCount: string | number;
+  myStatus: LikeStatus | null;
+};
+
 export class LikesInfoViewDto {
   @ApiProperty()
   likesCount: number;
@@ -36,17 +48,21 @@ export class CommentViewDto {
   @ApiProperty({ type: LikesInfoViewDto })
   likesInfo: LikesInfoViewDto;
 
-  static mapToView(row: any, likesInfo: LikesInfoViewDto): CommentViewDto {
+  static mapToView(row: CommentRawRow): CommentViewDto {
     const dto = new CommentViewDto();
 
     dto.id = row.id;
     dto.content = row.content;
     dto.commentatorInfo = {
-      userId: row.commentator_user_id ?? row.commentatorUserId,
-      userLogin: row.commentator_user_login ?? row.commentatorUserLogin,
+      userId: row.commentatorUserId,
+      userLogin: row.commentatorUserLogin,
     };
-    dto.createdAt = new Date(row.created_at ?? row.createdAt);
-    dto.likesInfo = likesInfo;
+    dto.createdAt = new Date(row.createdAt);
+    dto.likesInfo = {
+      likesCount: Number(row.likesCount),
+      dislikesCount: Number(row.dislikesCount),
+      myStatus: row.myStatus ?? LikeStatus.None,
+    };
 
     return dto;
   }

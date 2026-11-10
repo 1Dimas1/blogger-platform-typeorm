@@ -65,7 +65,9 @@ export function expectPostToMatchInput(
   expect(post.title).toBe(input.title);
   expect(post.shortDescription).toBe(input.shortDescription);
   expect(post.content).toBe(input.content);
-  expect(post.blogId).toBe(input.blogId);
+  if ('blogId' in input) {
+    expect(post.blogId).toBe(input.blogId);
+  }
 }
 
 /**
