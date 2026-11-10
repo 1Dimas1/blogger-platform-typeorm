@@ -11,6 +11,7 @@ export type DbConnectionSettings = {
   dbPassword?: string;
   dbName?: string;
   dbAutoSync?: boolean;
+  dbMigrationsRun?: boolean;
 };
 
 // shared by the Nest app (TypeOrmModule) and the migrations CLI (data-source.ts).
@@ -34,7 +35,7 @@ export const buildTypeOrmOptions = (
   // gen_random_uuid() is built into Postgres 13+, no uuid-ossp extension needed
   uuidExtension: 'pgcrypto',
   synchronize: settings.dbAutoSync ?? false,
-  migrationsRun: false,
+  migrationsRun: settings.dbMigrationsRun ?? false,
   // serverless: keep the pool small, Neon pooler does the rest
   extra: { max: 5 },
 });

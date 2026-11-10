@@ -71,6 +71,12 @@ export class CoreConfig {
   })
   dbAutoSync: boolean;
 
+  @IsBoolean({
+    message:
+      'Set Env variable DB_MIGRATIONS_RUN to run pending TypeORM migrations on app start (used on Vercel), example: true, available values: true, false',
+  })
+  dbMigrationsRun: boolean;
+
   @IsEnum(Environments, {
     message:
       'Ser correct NODE_ENV value, available values: ' +
@@ -177,6 +183,9 @@ export class CoreConfig {
     }
     this.dbAutoSync = configValidationUtility.convertToBoolean(
       this.configService.get('DB_AUTOSYNC'),
+    ) as boolean;
+    this.dbMigrationsRun = configValidationUtility.convertToBoolean(
+      this.configService.get('DB_MIGRATIONS_RUN'),
     ) as boolean;
     this.env = this.configService.get('NODE_ENV');
     this.isSwaggerEnabled = configValidationUtility.convertToBoolean(
