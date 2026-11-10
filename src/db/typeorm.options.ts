@@ -1,3 +1,4 @@
+import * as pg from 'pg';
 import { DataSourceOptions } from 'typeorm';
 import { SnakeNamingStrategy } from './snake-naming.strategy';
 import { entities } from './entities';
@@ -20,6 +21,8 @@ export const buildTypeOrmOptions = (
   settings: DbConnectionSettings,
 ): DataSourceOptions => ({
   type: 'postgres',
+  // TypeORM requires 'pg' dynamically, which Vercel's bundler can't trace; pass it explicitly
+  driver: pg,
   ...(settings.databaseUrl
     ? { url: settings.databaseUrl, ssl: { rejectUnauthorized: false } }
     : {
