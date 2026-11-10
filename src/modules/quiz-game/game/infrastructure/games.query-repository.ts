@@ -78,12 +78,18 @@ export class GamesQueryRepository {
       .createQueryBuilder('g')
       .innerJoin('g.players', 'me', 'me.userId = :userId', { userId });
 
+    const pageQuery = qb
+      .clone()
+      .select('g.id', 'id')
+      .orderBy(sortColumn, sortDirection);
+    // tie-breaker; orderBy entries are keyed by column, so never repeat the sort column
+    if (sortColumn !== myGamesSortColumnMap.pairCreatedDate) {
+      pageQuery.addOrderBy('g.pairCreatedDate', 'DESC');
+    }
+    pageQuery.addOrderBy('g.id', 'ASC');
+
     const [rows, totalCount] = await Promise.all([
-      qb
-        .clone()
-        .select('g.id', 'id')
-        .orderBy(sortColumn, sortDirection)
-        .addOrderBy('g.pairCreatedDate', 'DESC')
+      pageQuery
         .offset(query.calculateSkip())
         .limit(query.pageSize)
         .getRawMany<{ id: string }>(),

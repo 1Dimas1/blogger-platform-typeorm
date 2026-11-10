@@ -169,6 +169,18 @@ describe('Quiz game (e2e)', () => {
         'What is the capital of Italy?',
       ]);
 
+      // default sortBy=createdAt must honour the direction (regression)
+      const asc = await sa(request(httpServer).get(api('/sa/quiz/questions')))
+        .query({ sortDirection: 'asc' })
+        .expect(200);
+      const desc = await sa(
+        request(httpServer).get(api('/sa/quiz/questions')),
+      ).expect(200);
+      expect(asc.body.items.map((q: any) => q.id)).toEqual(
+        [...desc.body.items].reverse().map((q: any) => q.id),
+      );
+      expect(asc.body.items[0].id).toBe(id);
+
       await sa(
         request(httpServer).delete(api(`/sa/quiz/questions/${id}`)),
       ).expect(204);
@@ -412,6 +424,13 @@ describe('Quiz game (e2e)', () => {
         pageSize: 3,
       });
       expect(my.items[0].status).toBe('PendingSecondPlayer'); // newest first
+      const oldestFirst = (
+        await game('/pairs/my', u1)
+          .query({ sortBy: 'pairCreatedDate', sortDirection: 'asc' })
+          .expect(200)
+      ).body;
+      expect(oldestFirst.items[0].status).toBe('Finished');
+      expect(oldestFirst.items[3].status).toBe('PendingSecondPlayer');
       const byStatus = (
         await game('/pairs/my', u1)
           .query({ sortBy: 'status', sortDirection: 'asc' })

@@ -55,9 +55,14 @@ export class QuestionsQueryRepository {
     const sortDirection =
       query.sortDirection.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
+    qb.orderBy(sortColumn, sortDirection, 'NULLS LAST');
+    // tie-breaker; orderBy entries are keyed by column, so never repeat the sort column
+    if (sortColumn !== sortColumnMap.createdAt) {
+      qb.addOrderBy('q.createdAt', 'DESC');
+    }
+    qb.addOrderBy('q.id', 'ASC');
+
     const [questions, totalCount] = await qb
-      .orderBy(sortColumn, sortDirection, 'NULLS LAST')
-      .addOrderBy('q.createdAt', 'DESC')
       .skip(query.calculateSkip())
       .take(query.pageSize)
       .getManyAndCount();
